@@ -3,6 +3,7 @@ import fileUpload from "express-fileupload"
 import rootRouter from "./routes/rootRouter"
 import data from "./data"
 import notFoundRooter from "./routes/notFoundRouter"
+import messageRouter from "./routes/messageController"
 
 // Normal Things Never Leave Us Alone ...
 const app = express()
@@ -19,6 +20,7 @@ app.use(express.urlencoded({extended: false}))
 
 // Routing Shits
 rootRouter(app)
+messageRouter(app)
 notFoundRooter(app) // & at the end
 
 // Eventually Run The Server

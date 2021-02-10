@@ -8,6 +8,7 @@ const roomModel = new schema({
     },
     updated_date: {
         type: Date,
+        default: Date.now,
     },
     created_date: {
         type: Date,

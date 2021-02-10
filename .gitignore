@@ -1,0 +1,18 @@
+# dependencies
+/node_modules
+
+# production
+/build
+*.zip
+
+# private data
+/src/data
+
+# media
+/src/media
+
+# misc
+/.idea
+
+# package-lock.json
+package-lock.json

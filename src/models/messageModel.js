@@ -11,6 +11,17 @@ const messageModel = new schema({
         type: String,
         required: "Enter content!",
     },
+    sender: {
+        type: String,
+        enum: ["admin", "client"],
+        required: "Enter sender!",
+    },
+    seen_by_admin: {
+        type: Boolean,
+    },
+    seen_by_client: {
+        type: Boolean,
+    },
     type: {
         type: String,
         enum: ["text", "image", "file"],

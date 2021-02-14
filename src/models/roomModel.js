@@ -10,6 +10,10 @@ const roomModel = new schema({
         type: Date,
         default: Date.now,
     },
+    is_deleted: {
+        type: Boolean,
+        default: false,
+    },
     created_date: {
         type: Date,
         default: Date.now,

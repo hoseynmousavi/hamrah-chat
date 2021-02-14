@@ -1,15 +1,17 @@
 import express from "express"
 import fileUpload from "express-fileupload"
 import mongoose from "mongoose"
+import cors from "cors"
 import webSocket from "ws"
 import rootRouter from "./routes/rootRouter"
 import data from "./data"
 import notFoundRooter from "./routes/notFoundRouter"
-import messageRouter from "./routes/messageController"
+import messageRouter from "./routes/messageRouter"
 import socketController from "./controllers/socketController"
 
 // Normal Things Never Leave Us Alone ...
 const app = express()
+app.use(cors())
 app.use(fileUpload({createParentPath: true}))
 app.use(express.json())
 app.use(express.urlencoded({extended: false}))
@@ -21,9 +23,6 @@ mongoose.connect(data.connectServerDb, {useNewUrlParser: true}).then(() => conso
 // Run The Server & Socket
 const wss = new webSocket.Server({server: app.listen(data.port, () => console.log(`hamrah chat is Now Running on Port ${data.port}`))})
 socketController.startSocket(wss)
-
-// Add Header To All Responses & Token Things
-// addHeaderAndCheckPermissions(app)
 
 // Routing Shits
 rootRouter(app)

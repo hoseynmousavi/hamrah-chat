@@ -1,5 +1,4 @@
-import axios from "axios"
-import data from "../data"
+import authController from "./authController"
 
 let clients = {}
 let admins = {}
@@ -13,34 +12,38 @@ const startSocket = wss =>
             const roomId = req.url.split("/?room_id=")[1]
             clients[roomId] = {roomId, ws}
 
-            ws.on("message", data =>
-            {
-                try
-                {
-                    const parsedData = JSON.parse(data)
-                    if (parsedData.kind === "ping") ws.send(JSON.stringify({message: new Date().toISOString(), kind: "ping"}))
-                }
-                catch (e)
-                {
-                    console.log(e)
-                }
-            })
+            listen(ws)
 
             ws.on("close", () => clients[roomId] && delete clients[roomId])
         }
         else if (req.url.includes("/?token="))
         {
-            const token = req.url.split("/?token=")[1]
-            console.log(token)
-            axios.get(data.REST_URL + "/u/verify-token/", {headers: {"Authorization": token}})
-                .then(response =>
+            const token = decodeURI(req.url.split("/?token=")[1])
+            authController.verifyToken(token)
+                .then(id =>
                 {
-                    console.log(response.data)
+                    admins[id] = {id, ws}
+                    listen(ws)
+                    ws.on("close", () => clients[id] && delete clients[id])
                 })
-                .catch(err =>
-                {
-                    console.log(err?.response)
-                })
+                .catch(() => ws.send(JSON.stringify({message: "احراز هویت انجام نشد!", kind: 403})))
+        }
+        else ws.send(JSON.stringify({message: "ورودی های شما اشتباه است!", kind: 400}))
+    })
+}
+
+const listen = ws =>
+{
+    ws.on("message", data =>
+    {
+        try
+        {
+            const parsedData = JSON.parse(data)
+            if (parsedData.kind === "ping") ws.send(JSON.stringify({message: new Date().toISOString(), kind: "ping"}))
+        }
+        catch (e)
+        {
+            console.log(e)
         }
     })
 }
@@ -50,18 +53,33 @@ const sendMessage = message =>
     if (message.sender === "client")
     {
         Object.values(admins).forEach(item =>
-            item.ws.send(JSON.stringify(message)),
+            item.ws.send(JSON.stringify({message, kind: "chat"})),
         )
     }
     else if (message.sender === "admin")
     {
-        clients[message.room_id].ws(JSON.stringify(message))
+        clients[message.room_id] && clients[message.room_id].ws.send(JSON.stringify({message, kind: "chat"}))
+    }
+}
+
+const sendSeen = ({room_id, sender}) =>
+{
+    if (sender === "client")
+    {
+        Object.values(admins).forEach(item =>
+            item.ws.send(JSON.stringify({message: room_id, kind: "seen"})),
+        )
+    }
+    else if (sender === "admin")
+    {
+        clients[room_id] && clients[room_id].ws.send(JSON.stringify({message: room_id, kind: "seen"}))
     }
 }
 
 const socketController = {
     startSocket,
     sendMessage,
+    sendSeen,
 }
 
 export default socketController

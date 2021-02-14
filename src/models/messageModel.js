@@ -3,6 +3,9 @@ import mongoose from "mongoose"
 const schema = mongoose.Schema
 
 const messageModel = new schema({
+    admin_id: {
+        type: Number,
+    },
     room_id: {
         type: schema.Types.ObjectId,
         required: "Enter room_id!",

@@ -8,6 +8,7 @@ import data from "./data"
 import notFoundRooter from "./routes/notFoundRouter"
 import messageRouter from "./routes/messageRouter"
 import socketController from "./controllers/socketController"
+import gRpcController from "./controllers/gRpcController"
 
 // Normal Things Never Leave Us Alone ...
 const app = express()
@@ -22,7 +23,10 @@ mongoose.connect(data.connectServerDb, {useNewUrlParser: true}).then(() => conso
 
 // Run The Server & Socket
 const wss = new webSocket.Server({server: app.listen(data.port, () => console.log(`hamrah chat is Now Running on Port ${data.port}`))})
+
 socketController.startSocket(wss)
+
+gRpcController.startGRPC()
 
 // Routing Shits
 rootRouter(app)

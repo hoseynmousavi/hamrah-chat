@@ -4,6 +4,7 @@ import messageModel from "../models/messageModel"
 import socketController from "./socketController"
 import authController from "./authController"
 import axios from "axios"
+import gRpcController from "./gRpcController"
 
 const room = mongoose.model("room", roomModel)
 const message = mongoose.model("message", messageModel)
@@ -39,7 +40,7 @@ const sendMessage = (req, res) =>
         {
             const token = req.headers.authorization
             authController.verifyToken({token, checkStaff: true})
-                .then(user => createMessageFunc({res, admin_id: user.user_id, room_id, content, sender, newRoom: false}))
+                .then(user => createMessageFunc({res, admin_username: user.username, room_id, content, sender, newRoom: false}))
                 .catch(() => res.status(403).send({message: "شما پرمیشن لازم را ندارید!"}))
         }
         else
@@ -66,16 +67,16 @@ const sendMessage = (req, res) =>
 
 const createRoomFunc = ({res, content, sender, user}) =>
 {
-    if (user && user?.user_id)
+    if (user && user?.username)
     {
-        room.find({user_id: user.user_id}, (err, rooms) =>
+        room.find({username: user.username}, (err, rooms) =>
         {
             if (err) res.status(400).send({message: err})
             else
             {
                 if (!rooms || rooms.length === 0)
                 {
-                    new room({user_id: user.user_id}).save((err, createdRoom) =>
+                    new room({username: user.username}).save((err, createdRoom) =>
                     {
                         if (err) res.status(400).send({message: err})
                         else createMessageFunc({res, room_id: createdRoom._id, content, sender, newRoom: true})
@@ -95,7 +96,7 @@ const createRoomFunc = ({res, content, sender, user}) =>
     }
 }
 
-const createMessageFunc = ({res, admin_id, room_id, content, sender, newRoom, user}) =>
+const createMessageFunc = ({res, admin_username, room_id, content, sender, newRoom, user}) =>
 {
     room.find({_id: room_id}, (err, rooms) =>
     {
@@ -104,7 +105,7 @@ const createMessageFunc = ({res, admin_id, room_id, content, sender, newRoom, us
         else
         {
             new message({
-                admin_id,
+                admin_username,
                 room_id,
                 content,
                 sender,
@@ -121,10 +122,10 @@ const createMessageFunc = ({res, admin_id, room_id, content, sender, newRoom, us
                         socketController.sendMessage(createdMessage)
                         if (!newRoom)
                         {
-                            const user_id = user?.user_id || rooms[0].user_id || undefined
+                            const username = user?.username || rooms[0].username || undefined
                             room.findOneAndUpdate(
                                 {_id: room_id},
-                                {updated_date: new Date(), user_id},
+                                {updated_date: new Date(), username},
                                 {new: true, useFindAndModify: false, runValidators: true},
                                 (err => err && console.log(err)),
                             )
@@ -141,10 +142,10 @@ const getRooms = (req, res) =>
     authController.verifyToken({token, checkStaff: true})
         .then(() =>
         {
-            const limit = +req.query.limit > 0 && +req.query.limit <= 50 ? +req.query.limit : 50
+            const limit = +req.query.limit > 0 && +req.query.limit <= 15 ? +req.query.limit : 15
             const skip = +req.query.offset > 0 ? +req.query.offset : 0
             let query = {is_deleted: false}
-            const fields = "updated_date created_date"
+            const fields = "username updated_date created_date"
             const options = {sort: "-updated_date", skip, limit}
             room.countDocuments(query, (err, count) =>
             {
@@ -160,16 +161,32 @@ const getRooms = (req, res) =>
                             {
                                 let sendRooms = rooms.reduce((sum, item) => [...sum, item.toJSON()], [])
                                 sendRooms.forEach(item =>
+                                {
                                     message.find({room_id: item._id}, null, {sort: "-created_date", skip: 0, limit: 1}, (err, messages) =>
                                     {
                                         if (err) res.status(500).send({message: err})
                                         else
                                         {
                                             item.last_message = messages[0]
-                                            if (Object.values(sendRooms).every(item => item.last_message)) res.send({results: sendRooms, count})
+                                            if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count})
                                         }
-                                    }),
-                                )
+                                    })
+                                    if (item.username)
+                                    {
+                                        gRpcController.getFullName(item.username)
+                                            .then(nickname =>
+                                            {
+                                                item.nickname = nickname
+                                                if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count})
+                                            })
+                                            .catch(() => res.status(500).send({message: "error getting names"}))
+                                    }
+                                    else
+                                    {
+                                        item.nickname = null
+                                        if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count})
+                                    }
+                                })
                             }
                             else res.send({results: rooms, count})
                         }
@@ -214,7 +231,7 @@ const seenMessages = (req, res) =>
         authController.verifyToken({token, checkStaff: true})
             .then(user =>
             {
-                message.updateMany({sender: "client", room_id, seen_by_admin: false}, {seen_by_admin: true, seen_by_admin_id: user.user_id}, {new: true, useFindAndModify: false, runValidators: true}, err =>
+                message.updateMany({sender: "client", room_id, seen_by_admin: false}, {seen_by_admin: true, seen_by_admin_username: user.username}, {new: true, useFindAndModify: false, runValidators: true}, err =>
                 {
                     if (err) res.status(500).send({message: err})
                     else

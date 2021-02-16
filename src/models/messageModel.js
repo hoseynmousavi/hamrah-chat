@@ -3,8 +3,8 @@ import mongoose from "mongoose"
 const schema = mongoose.Schema
 
 const messageModel = new schema({
-    admin_id: {
-        type: Number,
+    admin_username: {
+        type: String,
     },
     room_id: {
         type: schema.Types.ObjectId,
@@ -22,8 +22,8 @@ const messageModel = new schema({
     seen_by_admin: {
         type: Boolean,
     },
-    seen_by_admin_id: {
-        type: Number,
+    seen_by_admin_username: {
+        type: String,
     },
     seen_by_client: {
         type: Boolean,

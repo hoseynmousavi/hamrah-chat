@@ -3,8 +3,8 @@ import mongoose from "mongoose"
 const schema = mongoose.Schema
 
 const roomModel = new schema({
-    user_id: {
-        type: Number,
+    username: {
+        type: String,
     },
     updated_date: {
         type: Date,

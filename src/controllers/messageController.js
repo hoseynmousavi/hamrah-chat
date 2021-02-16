@@ -121,9 +121,10 @@ const createMessageFunc = ({res, admin_id, room_id, content, sender, newRoom, us
                         socketController.sendMessage(createdMessage)
                         if (!newRoom)
                         {
+                            const user_id = user?.user_id || rooms[0].user_id || undefined
                             room.findOneAndUpdate(
                                 {_id: room_id},
-                                {updated_date: new Date(), user_id: user?.user_id || rooms[0].user_id},
+                                {updated_date: new Date(), user_id},
                                 {new: true, useFindAndModify: false, runValidators: true},
                                 (err => err && console.log(err)),
                             )

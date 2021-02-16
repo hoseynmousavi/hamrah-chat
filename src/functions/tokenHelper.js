@@ -4,13 +4,13 @@ import jwt from "jsonwebtoken"
 
 const cert = fs.readFileSync(path.join(__dirname, "../data/public.key"))
 
-const decodeToken = (token) =>
+const decodeToken = token =>
 {
     return new Promise((resolve, reject) =>
     {
         jwt.verify(token, cert, {algorithms: ["RS256"]}, (err, payload) =>
         {
-            if (err) reject({status: 403, err})
+            if (err) reject(err)
             else resolve(payload)
         })
     })

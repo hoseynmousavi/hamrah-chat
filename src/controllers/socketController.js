@@ -19,16 +19,21 @@ const startSocket = wss =>
         else if (req.url.includes("/?token="))
         {
             const token = decodeURI(req.url.split("/?token=")[1])
-            authController.verifyToken(token)
-                .then(id =>
+            authController.verifyToken({token, checkStaff: true})
+                .then(user =>
                 {
+                    const {id} = user
                     admins[id] = {id, ws}
                     listen(ws)
                     ws.on("close", () => clients[id] && delete clients[id])
                 })
-                .catch(() => ws.send(JSON.stringify({message: "احراز هویت انجام نشد!", kind: 403})))
+                .catch(() => ws.send(JSON.stringify({message: "شما پرمیشن لازم را ندارید!", kind: 403})))
         }
-        else ws.send(JSON.stringify({message: "ورودی های شما اشتباه است!", kind: 400}))
+        else
+        {
+            ws.send(JSON.stringify({message: "ورودی های شما اشتباه است!", kind: 400}))
+            ws.close()
+        }
     })
 }
 

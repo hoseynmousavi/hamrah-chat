@@ -1,29 +1,20 @@
-import axios from "axios"
-import data from "../data"
+import tokenHelper from "../functions/tokenHelper"
 
-let cacheVerify = []
-
-const verifyToken = token =>
+const verifyToken = ({token, checkStaff}) =>
 {
     return new Promise((resolve, reject) =>
     {
-        const searchCache = cacheVerify.filter(item => item.token === token)
-        if (searchCache.length > 0) resolve(searchCache[0].id)
-        else
-        {
-            axios.get(data.REST_URL + "/u/verify-token/", {headers: {"Authorization": token}})
-                .then(response =>
+        tokenHelper.decodeToken(token.slice(4, token.length))
+            .then(user =>
+            {
+                if (checkStaff)
                 {
-                    if (response.data.identity.id)
-                    {
-                        resolve(response.data.identity.id)
-                        cacheVerify.push({token, id: response.data.identity.id})
-                        if (cacheVerify.length > 10) cacheVerify.splice(0, 1)
-                    }
-                    else throw "err"
-                })
-                .catch(err => reject(err))
-        }
+                    if (user.is_staff) resolve(user)
+                    else reject("you don't have permission!")
+                }
+                else resolve(user)
+            })
+            .catch(err => reject(err))
     })
 }
 

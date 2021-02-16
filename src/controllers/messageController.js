@@ -16,12 +16,12 @@ const sendMessage = (req, res) =>
         if (sender === "admin")
         {
             const token = req.headers.authorization
-            if (!token) res.status(401).send({message: "شما پرمیشن لازم را ندارید!"})
+            if (!token) res.status(401).send({message: "احراز هویت انجام نشد!"})
             else
             {
-                authController.verifyToken(token)
-                    .then(admin_id => createMessageFunc({res, admin_id, room_id, content, sender, newRoom: false}))
-                    .catch(() => res.status(403).send({message: "احراز هویت انجام نشد!"}))
+                authController.verifyToken({token, checkStaff: true})
+                    .then(user => createMessageFunc({res, admin_id: user.id, room_id, content, sender, newRoom: false}))
+                    .catch(() => res.status(403).send({message: "شما پرمیشن لازم را ندارید!"}))
             }
         }
         else createMessageFunc({res, room_id, content, sender, newRoom: false})
@@ -83,10 +83,10 @@ const createMessageFunc = ({res, admin_id, room_id, content, sender, newRoom}) =
 const getRooms = (req, res) =>
 {
     const token = req.headers.authorization
-    if (!token) res.status(401).send({message: "شما پرمیشن لازم را ندارید!"})
+    if (!token) res.status(401).send({message: "احراز هویت انجام نشد!"})
     else
     {
-        authController.verifyToken(token)
+        authController.verifyToken({token, checkStaff: true})
             .then(() =>
             {
                 const limit = +req.query.limit > 0 && +req.query.limit <= 50 ? +req.query.limit : 50
@@ -125,7 +125,7 @@ const getRooms = (req, res) =>
                     }
                 })
             })
-            .catch(() => res.status(403).send({message: "احراز هویت انجام نشد!"}))
+            .catch(() => res.status(403).send({message: "شما پرمیشن لازم را ندارید!"}))
     }
 }
 
@@ -160,10 +160,10 @@ const seenMessages = (req, res) =>
     if (sender === "admin" && room_id)
     {
         const token = req.headers.authorization
-        if (!token) res.status(401).send({message: "شما پرمیشن لازم را ندارید!"})
+        if (!token) res.status(401).send({message: "احراز هویت انجام نشد!"})
         else
         {
-            authController.verifyToken(token)
+            authController.verifyToken({token, checkStaff: true})
                 .then(() =>
                 {
                     message.updateMany({sender: "client", room_id}, {seen_by_admin: true}, {new: true, useFindAndModify: false, runValidators: true}, err =>
@@ -176,7 +176,7 @@ const seenMessages = (req, res) =>
                         }
                     })
                 })
-                .catch(() => res.status(403).send({message: "احراز هویت انجام نشد!"}))
+                .catch(() => res.status(403).send({message: "شما پرمیشن لازم را ندارید!"}))
         }
     }
     else if (sender === "client" && room_id)

@@ -11,7 +11,7 @@ const message = mongoose.model("message", messageModel)
 
 let roomCount = 0
 
-room.countDocuments({is_deleted: false}, (err, countRooms) =>
+room.countDocuments(null, (err, countRooms) =>
 {
     if (err) console.log(err)
     else roomCount = countRooms
@@ -116,7 +116,7 @@ const createRoomFunc = ({res, content, sender, user}) =>
 
 const createMessageFunc = ({res, admin_username, room_id, content, sender, newRoom, user}) =>
 {
-    let query = {_id: room_id, is_deleted: false}
+    let query = {_id: room_id}
     const fields = "order username updated_date created_date"
     const options = {sort: "-updated_date", skip: 0, limit: 1}
     room.find(query, fields, options, (err, rooms) =>
@@ -151,6 +151,13 @@ const createMessageFunc = ({res, admin_username, room_id, content, sender, newRo
                                 {new: true, useFindAndModify: false, runValidators: true},
                                 (err => err && console.log(err)),
                             )
+                            
+                            // if (sender === "admin" && !socketController.isOnline(room_id) && takenRoom.username)
+                            // {
+                            //     axios.get(`https://api.kavenegar.com/v1/${data.kavenegarKey}/verify/lookup.json?receptor=${data.supportNumber}&token=${messages}&template=${data.remindTemplate}`)
+                            //         .then(() => console.log("we tried for send sms"))
+                            //         .catch(() => console.log("error in sending sms"))
+                            // }
                         }
                     }
                 })
@@ -166,10 +173,9 @@ const getRooms = (req, res) =>
         {
             const limit = +req.query.limit > 0 && +req.query.limit <= 15 ? +req.query.limit : 15
             const skip = +req.query.offset > 0 ? +req.query.offset : 0
-            let query = {is_deleted: false}
             const fields = "order username updated_date created_date"
             const options = {sort: "-updated_date", skip, limit}
-            room.find(query, fields, options, (err, rooms) =>
+            room.find(null, fields, options, (err, rooms) =>
             {
                 if (err) res.status(500).send({message: err})
                 else
@@ -259,6 +265,7 @@ const seenMessages = (req, res) =>
             {
                 res.send({message: "انجام شد"})
                 socketController.sendSeen({room_id, sender})
+                room.findOneAndUpdate({room_id}, {sent_sms_to_user: false}, {new: true, useFindAndModify: false, runValidators: true}, err => err && console.log(err))
             }
         })
     }

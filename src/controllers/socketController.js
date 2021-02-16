@@ -73,10 +73,13 @@ const sendSeen = ({room_id, sender}) =>
     }
 }
 
+const isOnline = room_id => !!clients[room_id]
+
 const socketController = {
     startSocket,
     sendMessage,
     sendSeen,
+    isOnline,
 }
 
 export default socketController

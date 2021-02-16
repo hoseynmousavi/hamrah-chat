@@ -9,6 +9,14 @@ import gRpcController from "./gRpcController"
 const room = mongoose.model("room", roomModel)
 const message = mongoose.model("message", messageModel)
 
+let roomCount = 0
+
+room.countDocuments({is_deleted: false}, (err, countRooms) =>
+{
+    if (err) console.log(err)
+    else roomCount = countRooms
+})
+
 setInterval(() =>
 {
     message.countDocuments({sender: "client", seen_by_admin: false, created_date: {$lte: new Date(new Date().getTime() - (1000 * 60 * 60))}}, (err, messages) =>
@@ -16,9 +24,10 @@ setInterval(() =>
         if (err) console.log(err)
         else
         {
+            const hour = new Date().getHours()
+
             if (messages > 0)
             {
-                const hour = new Date().getHours()
                 if (hour <= 22 && hour >= 8)
                 {
                     axios.get(`https://api.kavenegar.com/v1/${data.kavenegarKey}/verify/lookup.json?receptor=${data.supportNumber}&token=${messages}&template=${data.remindTemplate}`)
@@ -26,6 +35,8 @@ setInterval(() =>
                         .catch(() => console.log("error in sending sms"))
                 }
             }
+
+            if (hour === 9 || hour === 21) gRpcController.resetCacheNames()
         }
     })
 }, 3600000)
@@ -76,10 +87,14 @@ const createRoomFunc = ({res, content, sender, user}) =>
             {
                 if (!rooms || rooms.length === 0)
                 {
-                    new room({username: user.username}).save((err, createdRoom) =>
+                    new room({order: roomCount + 1, username: user.username}).save((err, createdRoom) =>
                     {
                         if (err) res.status(400).send({message: err})
-                        else createMessageFunc({res, room_id: createdRoom._id, content, sender, newRoom: true})
+                        else
+                        {
+                            roomCount++
+                            createMessageFunc({res, room_id: createdRoom._id, content, sender, newRoom: true})
+                        }
                     })
                 }
                 else createMessageFunc({res, room_id: rooms[0]._id, content, sender, newRoom: false})
@@ -88,10 +103,14 @@ const createRoomFunc = ({res, content, sender, user}) =>
     }
     else
     {
-        new room().save((err, createdRoom) =>
+        new room({order: roomCount + 1}).save((err, createdRoom) =>
         {
             if (err) res.status(400).send({message: err})
-            else createMessageFunc({res, room_id: createdRoom._id, content, sender, newRoom: true})
+            else
+            {
+                roomCount++
+                createMessageFunc({res, room_id: createdRoom._id, content, sender, newRoom: true})
+            }
         })
     }
 }
@@ -147,50 +166,43 @@ const getRooms = (req, res) =>
             let query = {is_deleted: false}
             const fields = "username updated_date created_date"
             const options = {sort: "-updated_date", skip, limit}
-            room.countDocuments(query, (err, count) =>
+            room.find(query, fields, options, (err, rooms) =>
             {
                 if (err) res.status(500).send({message: err})
                 else
                 {
-                    room.find(query, fields, options, (err, rooms) =>
+                    if (rooms.length > 0)
                     {
-                        if (err) res.status(500).send({message: err})
-                        else
+                        let sendRooms = rooms.reduce((sum, item) => [...sum, item.toJSON()], [])
+                        sendRooms.forEach(item =>
                         {
-                            if (rooms.length > 0)
+                            message.find({room_id: item._id}, null, {sort: "-created_date", skip: 0, limit: 1}, (err, messages) =>
                             {
-                                let sendRooms = rooms.reduce((sum, item) => [...sum, item.toJSON()], [])
-                                sendRooms.forEach(item =>
+                                if (err) res.status(500).send({message: err})
+                                else
                                 {
-                                    message.find({room_id: item._id}, null, {sort: "-created_date", skip: 0, limit: 1}, (err, messages) =>
+                                    item.last_message = messages[0]
+                                    if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count: roomCount})
+                                }
+                            })
+                            if (item.username)
+                            {
+                                gRpcController.getFullName(item.username)
+                                    .then(nickname =>
                                     {
-                                        if (err) res.status(500).send({message: err})
-                                        else
-                                        {
-                                            item.last_message = messages[0]
-                                            if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count})
-                                        }
+                                        item.nickname = nickname
+                                        if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count: roomCount})
                                     })
-                                    if (item.username)
-                                    {
-                                        gRpcController.getFullName(item.username)
-                                            .then(nickname =>
-                                            {
-                                                item.nickname = nickname
-                                                if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count})
-                                            })
-                                            .catch(() => res.status(500).send({message: "error getting names"}))
-                                    }
-                                    else
-                                    {
-                                        item.nickname = null
-                                        if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count})
-                                    }
-                                })
+                                    .catch(() => res.status(500).send({message: "error getting names"}))
                             }
-                            else res.send({results: rooms, count})
-                        }
-                    })
+                            else
+                            {
+                                item.nickname = null
+                                if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count: roomCount})
+                            }
+                        })
+                    }
+                    else res.send({results: rooms, count: roomCount})
                 }
             })
         })

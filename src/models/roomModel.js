@@ -3,6 +3,10 @@ import mongoose from "mongoose"
 const schema = mongoose.Schema
 
 const roomModel = new schema({
+    order: {
+        type: Number,
+        required: "order is required",
+    },
     username: {
         type: String,
     },

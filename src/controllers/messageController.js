@@ -43,7 +43,6 @@ setInterval(() =>
 
 const sendMessage = (req, res) =>
 {
-    res.setHeader("Access-Control-Allow-Origin", "*")
     const {content, room_id, sender} = req.body
     if (content && room_id && sender)
     {
@@ -93,11 +92,11 @@ const createRoomFunc = ({res, content, sender, user}) =>
                         else
                         {
                             roomCount++
-                            createMessageFunc({res, room_id: createdRoom._id, content, sender, newRoom: true})
+                            createMessageFunc({res, room_id: createdRoom._id, content, sender, user, newRoom: true})
                         }
                     })
                 }
-                else createMessageFunc({res, room_id: rooms[0]._id, content, sender, newRoom: false})
+                else createMessageFunc({res, room_id: rooms[0]._id, content, sender, user, newRoom: false})
             }
         })
     }
@@ -117,12 +116,16 @@ const createRoomFunc = ({res, content, sender, user}) =>
 
 const createMessageFunc = ({res, admin_username, room_id, content, sender, newRoom, user}) =>
 {
-    room.find({_id: room_id}, (err, rooms) =>
+    let query = {_id: room_id, is_deleted: false}
+    const fields = "order username updated_date created_date"
+    const options = {sort: "-updated_date", skip: 0, limit: 1}
+    room.find(query, fields, options, (err, rooms) =>
     {
         if (err) res.status(400).send({message: err})
         else if (!rooms || rooms.length === 0) res.status(404).send({message: "this room doesn't exists!"})
         else
         {
+            const takenRoom = rooms[0].toJSON()
             new message({
                 admin_username,
                 room_id,
@@ -138,10 +141,10 @@ const createMessageFunc = ({res, admin_username, room_id, content, sender, newRo
                     else
                     {
                         res.send(createdMessage)
-                        socketController.sendMessage(createdMessage)
+                        socketController.sendMessage({message: createdMessage, room: {...takenRoom, nickname: user?.nickname}})
                         if (!newRoom)
                         {
-                            const username = user?.username || rooms[0].username || undefined
+                            const username = takenRoom.username ? takenRoom.username : user?.username ? user.username : undefined
                             room.findOneAndUpdate(
                                 {_id: room_id},
                                 {updated_date: new Date(), username},
@@ -164,7 +167,7 @@ const getRooms = (req, res) =>
             const limit = +req.query.limit > 0 && +req.query.limit <= 15 ? +req.query.limit : 15
             const skip = +req.query.offset > 0 ? +req.query.offset : 0
             let query = {is_deleted: false}
-            const fields = "username updated_date created_date"
+            const fields = "order username updated_date created_date"
             const options = {sort: "-updated_date", skip, limit}
             room.find(query, fields, options, (err, rooms) =>
             {
@@ -185,21 +188,13 @@ const getRooms = (req, res) =>
                                     if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count: roomCount})
                                 }
                             })
-                            if (item.username)
-                            {
-                                gRpcController.getFullName(item.username)
-                                    .then(nickname =>
-                                    {
-                                        item.nickname = nickname
-                                        if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count: roomCount})
-                                    })
-                                    .catch(() => res.status(500).send({message: "error getting names"}))
-                            }
-                            else
-                            {
-                                item.nickname = null
-                                if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count: roomCount})
-                            }
+                            gRpcController.getFullName(item.username)
+                                .then(nickname =>
+                                {
+                                    item.nickname = nickname
+                                    if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count: roomCount})
+                                })
+                                .catch(() => res.status(500).send({message: "error getting names"}))
                         })
                     }
                     else res.send({results: rooms, count: roomCount})

@@ -55,16 +55,8 @@ const listen = ws =>
 
 const sendMessage = message =>
 {
-    if (message.sender === "client")
-    {
-        Object.values(admins).forEach(item =>
-            item.ws.send(JSON.stringify({message, kind: "chat"})),
-        )
-    }
-    else if (message.sender === "admin")
-    {
-        clients[message.room_id] && clients[message.room_id].ws.send(JSON.stringify({message, kind: "chat"}))
-    }
+    if (message.message.sender === "client") Object.values(admins).forEach(item => item.ws.send(JSON.stringify({message, kind: "chat"})))
+    else if (message.message.sender === "admin") clients[message.message.room_id] && clients[message.message.room_id].ws.send(JSON.stringify({message, kind: "chat"}))
 }
 
 const sendSeen = ({room_id, sender}) =>

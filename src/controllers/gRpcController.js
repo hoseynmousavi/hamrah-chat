@@ -16,7 +16,8 @@ const getFullName = username =>
 {
     return new Promise((resolve, reject) =>
     {
-        if (cacheNames[username]) resolve(cacheNames[username])
+        if (!username) resolve(null)
+        else if (cacheNames[username]) resolve(cacheNames[username])
         else if (client && client.GetFullname)
         {
             client.GetFullname(

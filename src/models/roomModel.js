@@ -4,7 +4,7 @@ const schema = mongoose.Schema
 
 const roomModel = new schema({
     user_id: {
-        type: schema.Types.ObjectId,
+        type: Number,
     },
     updated_date: {
         type: Date,

@@ -22,7 +22,7 @@ const startSocket = wss =>
             authController.verifyToken({token, checkStaff: true})
                 .then(user =>
                 {
-                    const {id} = user
+                    const id = user.user_id
                     admins[id] = {id, ws}
                     listen(ws)
                     ws.on("close", () => clients[id] && delete clients[id])

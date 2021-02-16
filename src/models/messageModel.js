@@ -22,6 +22,9 @@ const messageModel = new schema({
     seen_by_admin: {
         type: Boolean,
     },
+    seen_by_admin_id: {
+        type: Number,
+    },
     seen_by_client: {
         type: Boolean,
     },

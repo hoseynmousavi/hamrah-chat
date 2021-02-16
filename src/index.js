@@ -8,6 +8,7 @@ import data from "./data"
 import notFoundRooter from "./routes/notFoundRouter"
 import messageRouter from "./routes/messageRouter"
 import socketController from "./controllers/socketController"
+import tokenHelper from "./functions/tokenHelper"
 
 // Normal Things Never Leave Us Alone ...
 const app = express()
@@ -23,6 +24,14 @@ mongoose.connect(data.connectServerDb, {useNewUrlParser: true}).then(() => conso
 // Run The Server & Socket
 const wss = new webSocket.Server({server: app.listen(data.port, () => console.log(`hamrah chat is Now Running on Port ${data.port}`))})
 socketController.startSocket(wss)
+
+// app.route("/test")
+//     .post((req, res) =>
+//     {
+//         tokenHelper.decodeToken(req.body.token)
+//             .then((payload) => res.send(payload))
+//             .catch((err) => res.send(err))
+//     })
 
 // Routing Shits
 rootRouter(app)

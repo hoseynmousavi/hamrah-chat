@@ -28,6 +28,9 @@ const messageModel = new schema({
     seen_by_client: {
         type: Boolean,
     },
+    seen_date: {
+        type: Date,
+    },
     type: {
         type: String,
         enum: ["text", "image", "file"],

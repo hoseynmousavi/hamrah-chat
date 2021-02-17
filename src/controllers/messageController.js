@@ -151,7 +151,7 @@ const createMessageFunc = ({res, admin_username, room_id, content, sender, newRo
                                 {new: true, useFindAndModify: false, runValidators: true},
                                 (err => err && console.log(err)),
                             )
-                            
+
                             // if (sender === "admin" && !socketController.isOnline(room_id) && takenRoom.username)
                             // {
                             //     axios.get(`https://api.kavenegar.com/v1/${data.kavenegarKey}/verify/lookup.json?receptor=${data.supportNumber}&token=${messages}&template=${data.remindTemplate}`)
@@ -244,30 +244,38 @@ const seenMessages = (req, res) =>
         authController.verifyToken({token, checkStaff: true})
             .then(user =>
             {
-                message.updateMany({sender: "client", room_id, seen_by_admin: false}, {seen_by_admin: true, seen_by_admin_username: user.username}, {new: true, useFindAndModify: false, runValidators: true}, err =>
-                {
-                    if (err) res.status(500).send({message: err})
-                    else
+                message.updateMany(
+                    {sender: "client", room_id, seen_by_admin: false},
+                    {seen_by_admin: true, seen_by_admin_username: user.username, seen_date: new Date()},
+                    {new: true, useFindAndModify: false, runValidators: true},
+                    err =>
                     {
-                        res.send({message: "انجام شد"})
-                        socketController.sendSeen({room_id, sender})
-                    }
-                })
+                        if (err) res.status(500).send({message: err})
+                        else
+                        {
+                            res.send({message: "انجام شد"})
+                            socketController.sendSeen({room_id, sender})
+                        }
+                    })
             })
             .catch(() => res.status(403).send({message: "شما پرمیشن لازم را ندارید!"}))
     }
     else if (sender === "client" && room_id)
     {
-        message.updateMany({sender: "admin", room_id, seen_by_client: false}, {seen_by_client: true}, {new: true, useFindAndModify: false, runValidators: true}, err =>
-        {
-            if (err) res.status(500).send({message: err})
-            else
+        message.updateMany(
+            {sender: "admin", room_id, seen_by_client: false},
+            {seen_by_client: true, seen_date: new Date()},
+            {new: true, useFindAndModify: false, runValidators: true},
+            err =>
             {
-                res.send({message: "انجام شد"})
-                socketController.sendSeen({room_id, sender})
-                room.findOneAndUpdate({room_id}, {sent_sms_to_user: false}, {new: true, useFindAndModify: false, runValidators: true}, err => err && console.log(err))
-            }
-        })
+                if (err) res.status(500).send({message: err})
+                else
+                {
+                    res.send({message: "انجام شد"})
+                    socketController.sendSeen({room_id, sender})
+                    room.findOneAndUpdate({room_id}, {sent_sms_to_user: false}, {new: true, useFindAndModify: false, runValidators: true}, err => err && console.log(err))
+                }
+            })
     }
     else res.status(400).send({message: "پارامتر های ارسالی اشتباه است!"})
 }

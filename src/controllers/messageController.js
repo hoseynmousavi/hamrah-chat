@@ -4,6 +4,7 @@ import messageModel from "../models/messageModel"
 import socketController from "./socketController"
 import authController from "./authController"
 import axios from "axios"
+import data from "../data"
 import gRpcController from "./gRpcController"
 
 const room = mongoose.model("room", roomModel)

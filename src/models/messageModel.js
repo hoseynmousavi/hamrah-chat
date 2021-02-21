@@ -14,6 +14,12 @@ const messageModel = new schema({
         type: String,
         required: "Enter content!",
     },
+    content_width: {
+        type: Number,
+    },
+    content_height: {
+        type: Number,
+    },
     sender: {
         type: String,
         enum: ["admin", "client"],

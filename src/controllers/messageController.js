@@ -45,7 +45,7 @@ setInterval(() =>
 
 const sendMessage = (req, res) =>
 {
-    const {room_id, sender} = req.body
+    const {room_id, sender, content_width, content_height} = req.body
     const content = req.body?.content || req.files?.content
     if (content && room_id && sender)
     {
@@ -53,15 +53,15 @@ const sendMessage = (req, res) =>
         {
             const token = req.headers.authorization
             authController.verifyToken({token, checkStaff: true})
-                .then(user => createMessageFunc({res, admin_username: user.username, room_id, content, sender, newRoom: false}))
+                .then(user => createMessageFunc({res, admin_username: user.username, room_id, content, content_width, content_height, sender, newRoom: false}))
                 .catch(() => res.status(403).send({message: "شما پرمیشن لازم را ندارید!"}))
         }
         else
         {
             const token = req.headers.authorization
             authController.verifyToken({token, checkStaff: false})
-                .then(user => createMessageFunc({res, room_id, content, sender, newRoom: false, user}))
-                .catch(() => createMessageFunc({res, room_id, content, sender, newRoom: false}))
+                .then(user => createMessageFunc({res, room_id, content, content_width, content_height, sender, newRoom: false, user}))
+                .catch(() => createMessageFunc({res, room_id, content, content_width, content_height, sender, newRoom: false}))
         }
     }
     else if (content && sender)
@@ -70,15 +70,15 @@ const sendMessage = (req, res) =>
         {
             const token = req.headers.authorization
             authController.verifyToken({token, checkStaff: false})
-                .then(user => createRoomFunc({res, content, sender, user}))
-                .catch(() => createRoomFunc({res, content, sender}))
+                .then(user => createRoomFunc({res, content, content_width, content_height, sender, user}))
+                .catch(() => createRoomFunc({res, content, content_width, content_height, sender}))
         }
         else res.status(400).send({message: "just client can start a room!"})
     }
     else res.status(400).send({message: "send content & sender at least! (room_id optional)"})
 }
 
-const createRoomFunc = ({res, content, sender, user}) =>
+const createRoomFunc = ({res, content, content_width, content_height, sender, user}) =>
 {
     if (user && user?.username)
     {
@@ -95,11 +95,11 @@ const createRoomFunc = ({res, content, sender, user}) =>
                         else
                         {
                             roomCount++
-                            createMessageFunc({res, room_id: createdRoom._id, content, sender, user, newRoom: true})
+                            createMessageFunc({res, room_id: createdRoom._id, content, content_width, content_height, sender, user, newRoom: true})
                         }
                     })
                 }
-                else createMessageFunc({res, room_id: rooms[0]._id, content, sender, user, newRoom: false})
+                else createMessageFunc({res, room_id: rooms[0]._id, content, content_width, content_height, sender, user, newRoom: false})
             }
         })
     }
@@ -111,13 +111,13 @@ const createRoomFunc = ({res, content, sender, user}) =>
             else
             {
                 roomCount++
-                createMessageFunc({res, room_id: createdRoom._id, content, sender, newRoom: true})
+                createMessageFunc({res, room_id: createdRoom._id, content, content_width, content_height, sender, newRoom: true})
             }
         })
     }
 }
 
-const createMessageFunc = ({res, admin_username, room_id, content, sender, newRoom, user}) =>
+const createMessageFunc = ({res, admin_username, room_id, content, content_width, content_height, sender, newRoom, user}) =>
 {
     let query = {_id: room_id}
     const fields = "order username updated_date created_date"
@@ -136,6 +136,8 @@ const createMessageFunc = ({res, admin_username, room_id, content, sender, newRo
                         admin_username,
                         room_id,
                         content: content.path || content.data,
+                        content_width,
+                        content_height,
                         sender,
                         seen_by_admin: sender === "client" ? false : undefined,
                         seen_by_client: sender === "admin" ? false : undefined,

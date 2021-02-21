@@ -6,6 +6,7 @@ import authController from "./authController"
 import axios from "axios"
 import data from "../data"
 import gRpcController from "./gRpcController"
+import saveFile from "../functions/saveFile"
 
 const room = mongoose.model("room", roomModel)
 const message = mongoose.model("message", messageModel)
@@ -44,7 +45,8 @@ setInterval(() =>
 
 const sendMessage = (req, res) =>
 {
-    const {content, room_id, sender} = req.body
+    const {room_id, sender} = req.body
+    const content = req.body?.content || req.files?.content
     if (content && room_id && sender)
     {
         if (sender === "admin")
@@ -126,42 +128,47 @@ const createMessageFunc = ({res, admin_username, room_id, content, sender, newRo
         else if (!rooms || rooms.length === 0) res.status(404).send({message: "this room doesn't exists!"})
         else
         {
-            const takenRoom = rooms[0].toJSON()
-            new message({
-                admin_username,
-                room_id,
-                content,
-                sender,
-                seen_by_admin: sender === "client" ? false : undefined,
-                seen_by_client: sender === "admin" ? false : undefined,
-                type: "text",
-            })
-                .save((err, createdMessage) =>
+            saveFile({file: content, folder: "images"})
+                .then(content =>
                 {
-                    if (err) res.status(400).send({message: err})
-                    else
-                    {
-                        res.send(createdMessage)
-                        socketController.sendMessage({message: createdMessage, room: {...takenRoom, nickname: user?.nickname}})
-                        if (!newRoom)
+                    const takenRoom = rooms[0].toJSON()
+                    new message({
+                        admin_username,
+                        room_id,
+                        content: content.path || content.data,
+                        sender,
+                        seen_by_admin: sender === "client" ? false : undefined,
+                        seen_by_client: sender === "admin" ? false : undefined,
+                        type: content.path ? "image" : "text",
+                    })
+                        .save((err, createdMessage) =>
                         {
-                            const username = takenRoom.username ? takenRoom.username : user?.username ? user.username : undefined
-                            room.findOneAndUpdate(
-                                {_id: room_id},
-                                {updated_date: new Date(), username},
-                                {new: true, useFindAndModify: false, runValidators: true},
-                                (err => err && console.log(err)),
-                            )
+                            if (err) res.status(400).send({message: err})
+                            else
+                            {
+                                res.send(createdMessage)
+                                socketController.sendMessage({message: createdMessage, room: {...takenRoom, nickname: user?.nickname}})
+                                if (!newRoom)
+                                {
+                                    const username = takenRoom.username ? takenRoom.username : user?.username ? user.username : undefined
+                                    room.findOneAndUpdate(
+                                        {_id: room_id},
+                                        {updated_date: new Date(), username},
+                                        {new: true, useFindAndModify: false, runValidators: true},
+                                        (err => err && console.log(err)),
+                                    )
 
-                            // if (sender === "admin" && !socketController.isOnline(room_id) && takenRoom.username)
-                            // {
-                            //     axios.get(`https://api.kavenegar.com/v1/${data.kavenegarKey}/verify/lookup.json?receptor=${data.supportNumber}&token=${messages}&template=${data.remindTemplate}`)
-                            //         .then(() => console.log("we tried for send sms"))
-                            //         .catch(() => console.log("error in sending sms"))
-                            // }
-                        }
-                    }
+                                    // if (sender === "admin" && !socketController.isOnline(room_id) && takenRoom.username)
+                                    // {
+                                    //     axios.get(`https://api.kavenegar.com/v1/${data.kavenegarKey}/verify/lookup.json?receptor=${data.supportNumber}&token=${messages}&template=${data.remindTemplate}`)
+                                    //         .then(() => console.log("we tried for send sms"))
+                                    //         .catch(() => console.log("error in sending sms"))
+                                    // }
+                                }
+                            }
+                        })
                 })
+                .catch(err => res.status(400).send({message: err}))
         }
     })
 }
@@ -274,7 +281,7 @@ const seenMessages = (req, res) =>
                 {
                     res.send({message: "انجام شد"})
                     socketController.sendSeen({room_id, sender})
-                    room.findOneAndUpdate({room_id}, {sent_sms_to_user: false}, {new: true, useFindAndModify: false, runValidators: true}, err => err && console.log(err))
+                    // room.findOneAndUpdate({room_id}, {sent_sms_to_user: false}, {new: true, useFindAndModify: false, runValidators: true}, err => err && console.log(err))
                 }
             })
     }

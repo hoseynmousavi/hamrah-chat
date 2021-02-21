@@ -2,16 +2,16 @@ const saveFile = ({file, folder}) =>
 {
     return new Promise((resolve, reject) =>
     {
-        if (file && folder)
+        if (file && folder && typeof file === "object")
         {
             const fileName = new Date().toISOString() + file.name
             file.mv(`media/${folder}/${fileName}`, err =>
             {
                 if (err) reject(err)
-                else resolve(`/media/${folder}/${fileName}`)
+                else resolve({path: `/media/${folder}/${fileName}`})
             })
         }
-        else resolve(undefined)
+        else resolve({data: file})
     })
 }
 

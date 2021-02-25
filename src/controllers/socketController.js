@@ -9,23 +9,27 @@ const startSocket = wss =>
     {
         if (req.url.includes("/?room_id="))
         {
-            const roomId = req.url.split("/?room_id=")[1]
-            clients[roomId] = {roomId, ws}
-
+            const params = req.url.split("/?room_id=")[1]
+            const roomId = params.split("&unique=")[0]
+            const unique = params.split("&unique=")[1]
+            if (clients[roomId]) clients[roomId][unique] = {roomId, unique, ws}
+            else clients[roomId] = {[unique]: {roomId, unique, ws}}
             listen(ws)
-
-            ws.on("close", () => clients[roomId] && delete clients[roomId])
+            ws.on("close", () => clients[roomId] && delete clients[roomId][unique])
         }
         else if (req.url.includes("/?token="))
         {
-            const token = decodeURI(req.url.split("/?token=")[1])
+            const params = decodeURI(req.url.split("/?token=")[1])
+            const token = params.split("&unique=")[0]
+            const unique = params.split("&unique=")[1]
             authController.verifyToken({token, checkStaff: true})
                 .then(user =>
                 {
                     const id = user.username
-                    admins[id] = {id, ws}
+                    if (admins[id]) admins[id][unique] = {id, unique, ws}
+                    else admins[id] = {[unique]: {id, unique, ws}}
                     listen(ws)
-                    ws.on("close", () => clients[id] && delete clients[id])
+                    ws.on("close", () => admins[id] && delete admins[id][unique])
                 })
                 .catch(() => ws.send(JSON.stringify({message: "شما پرمیشن لازم را ندارید!", kind: 403})))
         }
@@ -53,23 +57,31 @@ const listen = ws =>
     })
 }
 
-const sendMessage = message =>
+const sendMessage = ({message, room, unique}) =>
 {
-    if (message.message.sender === "client") Object.values(admins).forEach(item => item.ws.send(JSON.stringify({message, kind: "chat"})))
-    else if (message.message.sender === "admin") clients[message.message.room_id] && clients[message.message.room_id].ws.send(JSON.stringify({message, kind: "chat"}))
+    if (message.sender === "client")
+    {
+        Object.values(admins).forEach(item => Object.values(item).forEach(item => item.ws.send(JSON.stringify({message: {message, room}, kind: "chat"}))))
+        clients[message.room_id] && Object.values(clients[message.room_id]).forEach(item => item.unique !== unique && item.ws.send(JSON.stringify({message: {message, room}, kind: "chat"})))
+    }
+    else if (message.sender === "admin")
+    {
+        clients[message.room_id] && Object.values(clients[message.room_id]).forEach(item => item.ws.send(JSON.stringify({message: {message, room}, kind: "chat"})))
+        Object.values(admins).forEach(item => Object.values(item).forEach(item => item.unique !== unique && item.ws.send(JSON.stringify({message: {message, room}, kind: "chat"}))))
+    }
 }
 
-const sendSeen = ({room_id, sender}) =>
+const sendSeen = ({room_id, sender, unique}) =>
 {
     if (sender === "client")
     {
-        Object.values(admins).forEach(item =>
-            item.ws.send(JSON.stringify({message: room_id, kind: "seen"})),
-        )
+        Object.values(admins).forEach(item => Object.values(item).forEach(item => item.ws.send(JSON.stringify({message: {room_id, sender}, kind: "seen"}))))
+        clients[room_id] && Object.values(clients[room_id]).forEach(item => item.unique !== unique && item.ws.send(JSON.stringify({message: {room_id, sender}, kind: "seen"})))
     }
     else if (sender === "admin")
     {
-        clients[room_id] && clients[room_id].ws.send(JSON.stringify({message: room_id, kind: "seen"}))
+        clients[room_id] && Object.values(clients[room_id]).forEach(item => item.ws.send(JSON.stringify({message: {room_id, sender}, kind: "seen"})))
+        Object.values(admins).forEach(item => Object.values(item).forEach(item => item.unique !== unique && item.ws.send(JSON.stringify({message: {room_id, sender}, kind: "seen"}))))
     }
 }
 

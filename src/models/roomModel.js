@@ -3,10 +3,6 @@ import mongoose from "mongoose"
 const schema = mongoose.Schema
 
 const roomModel = new schema({
-    sent_sms_to_user: {
-        type: Boolean,
-        default: false,
-    },
     order: {
         type: Number,
         required: "order is required",

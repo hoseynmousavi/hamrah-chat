@@ -45,40 +45,40 @@ setInterval(() =>
 
 const sendMessage = (req, res) =>
 {
-    const {room_id, sender, content_width, content_height} = req.body
+    const {room_id, sender, unique, content_width, content_height} = req.body
     const content = req.body?.content || req.files?.content
-    if (content && room_id && sender)
+    if (content && room_id && sender && unique)
     {
         if (sender === "admin")
         {
             const token = req.headers.authorization
             authController.verifyToken({token, checkStaff: true})
-                .then(user => createMessageFunc({res, admin_username: user.username, room_id, content, content_width, content_height, sender, newRoom: false}))
+                .then(user => createMessageFunc({res, admin_username: user.username, room_id, content, content_width, content_height, sender, newRoom: false, unique}))
                 .catch(() => res.status(403).send({message: "شما پرمیشن لازم را ندارید!"}))
         }
         else
         {
             const token = req.headers.authorization
             authController.verifyToken({token, checkStaff: false})
-                .then(user => createMessageFunc({res, room_id, content, content_width, content_height, sender, newRoom: false, user}))
-                .catch(() => createMessageFunc({res, room_id, content, content_width, content_height, sender, newRoom: false}))
+                .then(user => createMessageFunc({res, room_id, content, content_width, content_height, sender, newRoom: false, user, unique}))
+                .catch(() => createMessageFunc({res, room_id, content, content_width, content_height, sender, newRoom: false, unique}))
         }
     }
-    else if (content && sender)
+    else if (content && sender && unique)
     {
         if (sender === "client")
         {
             const token = req.headers.authorization
             authController.verifyToken({token, checkStaff: false})
-                .then(user => createRoomFunc({res, content, content_width, content_height, sender, user}))
-                .catch(() => createRoomFunc({res, content, content_width, content_height, sender}))
+                .then(user => createRoomFunc({res, content, content_width, content_height, sender, user, unique}))
+                .catch(() => createRoomFunc({res, content, content_width, content_height, sender, unique}))
         }
         else res.status(400).send({message: "just client can start a room!"})
     }
-    else res.status(400).send({message: "send content & sender at least! (room_id optional)"})
+    else res.status(400).send({message: "send content & sender & unique at least! (room_id optional)"})
 }
 
-const createRoomFunc = ({res, content, content_width, content_height, sender, user}) =>
+const createRoomFunc = ({res, content, content_width, content_height, sender, user, unique}) =>
 {
     if (user && user?.username)
     {
@@ -95,11 +95,11 @@ const createRoomFunc = ({res, content, content_width, content_height, sender, us
                         else
                         {
                             roomCount++
-                            createMessageFunc({res, room_id: createdRoom._id, content, content_width, content_height, sender, user, newRoom: true})
+                            createMessageFunc({res, room_id: createdRoom._id, content, content_width, content_height, sender, user, newRoom: true, unique})
                         }
                     })
                 }
-                else createMessageFunc({res, room_id: rooms[0]._id, content, content_width, content_height, sender, user, newRoom: false})
+                else createMessageFunc({res, room_id: rooms[0]._id, content, content_width, content_height, sender, user, newRoom: false, unique})
             }
         })
     }
@@ -111,13 +111,13 @@ const createRoomFunc = ({res, content, content_width, content_height, sender, us
             else
             {
                 roomCount++
-                createMessageFunc({res, room_id: createdRoom._id, content, content_width, content_height, sender, newRoom: true})
+                createMessageFunc({res, room_id: createdRoom._id, content, content_width, content_height, sender, newRoom: true, unique})
             }
         })
     }
 }
 
-const createMessageFunc = ({res, admin_username, room_id, content, content_width, content_height, sender, newRoom, user}) =>
+const createMessageFunc = ({res, admin_username, room_id, content, content_width, content_height, sender, newRoom, user, unique}) =>
 {
     let query = {_id: room_id}
     const fields = "order username updated_date created_date"
@@ -149,7 +149,7 @@ const createMessageFunc = ({res, admin_username, room_id, content, content_width
                             else
                             {
                                 res.send(createdMessage)
-                                socketController.sendMessage({message: createdMessage, room: {...takenRoom, nickname: user?.nickname}})
+                                socketController.sendMessage({message: createdMessage, room: {...takenRoom, nickname: user?.nickname}, unique})
                                 if (!newRoom)
                                 {
                                     const username = takenRoom.username ? takenRoom.username : user?.username ? user.username : undefined
@@ -159,13 +159,6 @@ const createMessageFunc = ({res, admin_username, room_id, content, content_width
                                         {new: true, useFindAndModify: false, runValidators: true},
                                         (err => err && console.log(err)),
                                     )
-
-                                    // if (sender === "admin" && !socketController.isOnline(room_id) && takenRoom.username)
-                                    // {
-                                    //     axios.get(`https://api.kavenegar.com/v1/${data.kavenegarKey}/verify/lookup.json?receptor=${data.supportNumber}&token=${messages}&template=${data.remindTemplate}`)
-                                    //         .then(() => console.log("we tried for send sms"))
-                                    //         .catch(() => console.log("error in sending sms"))
-                                    // }
                                 }
                             }
                         })
@@ -247,8 +240,8 @@ const getMessages = (req, res) =>
 
 const seenMessages = (req, res) =>
 {
-    const {sender, room_id} = req.body
-    if (sender === "admin" && room_id)
+    const {sender, room_id, unique} = req.body
+    if (sender === "admin" && room_id && unique)
     {
         const token = req.headers.authorization
         authController.verifyToken({token, checkStaff: true})
@@ -264,13 +257,13 @@ const seenMessages = (req, res) =>
                         else
                         {
                             res.send({message: "انجام شد"})
-                            socketController.sendSeen({room_id, sender})
+                            socketController.sendSeen({room_id, sender, unique})
                         }
                     })
             })
             .catch(() => res.status(403).send({message: "شما پرمیشن لازم را ندارید!"}))
     }
-    else if (sender === "client" && room_id)
+    else if (sender === "client" && room_id && unique)
     {
         message.updateMany(
             {sender: "admin", room_id, seen_by_client: false},
@@ -282,8 +275,7 @@ const seenMessages = (req, res) =>
                 else
                 {
                     res.send({message: "انجام شد"})
-                    socketController.sendSeen({room_id, sender})
-                    // room.findOneAndUpdate({room_id}, {sent_sms_to_user: false}, {new: true, useFindAndModify: false, runValidators: true}, err => err && console.log(err))
+                    socketController.sendSeen({room_id, sender, unique})
                 }
             })
     }

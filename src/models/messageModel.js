@@ -20,6 +20,9 @@ const messageModel = new schema({
     content_height: {
         type: Number,
     },
+    url: {
+        type: String,
+    },
     sender: {
         type: String,
         enum: ["admin", "client"],

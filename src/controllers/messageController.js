@@ -23,9 +23,9 @@ setInterval(() =>
 {
     const hour = new Date().getHours()
     if (hour === 9 || hour === 21) gRpcController.resetCacheNames()
-}, 3600000)
+}, 1000 * 60 * 60)
 
-let remindTimer = setInterval(() => sendSmsToSupport(false), 900000)
+let remindTimer = setInterval(() => sendSmsToSupport(false), 1000 * 15 * 60)
 
 const sendSmsToSupport = resetTimer =>
 {
@@ -46,7 +46,7 @@ const sendSmsToSupport = resetTimer =>
                             if (resetTimer)
                             {
                                 clearInterval(remindTimer)
-                                remindTimer = setInterval(() => sendSmsToSupport(), 900000)
+                                remindTimer = setInterval(() => sendSmsToSupport(), 1000 * 15 * 60)
                             }
                         })
                         .catch(() => console.log("error in sending sms"))

@@ -25,9 +25,11 @@ setInterval(() =>
     if (hour === 9 || hour === 21) gRpcController.resetCacheNames()
 }, 3600000)
 
-setInterval(() =>
+let remindTimer = setInterval(() => sendSmsToSupport(false), 900000)
+
+const sendSmsToSupport = resetTimer =>
 {
-    message.countDocuments({sender: "client", seen_by_admin: false, created_date: {$lte: new Date(new Date().getTime() - (1000 * 60 * 60))}}, (err, messages) =>
+    message.countDocuments({sender: "client", seen_by_admin: false, created_date: {$lte: new Date(new Date().getTime() - (1000 * 15 * 60))}}, (err, messages) =>
     {
         if (err) console.log(err)
         else
@@ -38,13 +40,21 @@ setInterval(() =>
                 if (hour <= 22 && hour >= 8)
                 {
                     axios.get(`https://api.kavenegar.com/v1/${data.kavenegarKey}/verify/lookup.json?receptor=${data.supportNumber}&token=${messages}&template=${data.remindTemplate}`)
-                        .then(() => console.log("we tried for send sms"))
+                        .then(() =>
+                        {
+                            console.log("we tried for send sms")
+                            if (resetTimer)
+                            {
+                                clearInterval(remindTimer)
+                                remindTimer = setInterval(() => sendSmsToSupport(), 900000)
+                            }
+                        })
                         .catch(() => console.log("error in sending sms"))
                 }
             }
         }
     })
-}, 900000)
+}
 
 const sendMessage = (req, res) =>
 {
@@ -164,6 +174,7 @@ const createMessageFunc = ({res, admin_username, room_id, content, content_width
                                         (err => err && console.log(err)),
                                     )
                                 }
+                                if (sender === "client" && !socketController.isSupportOnline()) sendSmsToSupport(true)
                             }
                         })
                 })

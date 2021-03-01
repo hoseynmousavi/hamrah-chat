@@ -1,4 +1,5 @@
 import authController from "./authController"
+import data from "../data"
 
 let clients = {}
 let admins = {}
@@ -85,13 +86,13 @@ const sendSeen = ({room_id, sender, unique}) =>
     }
 }
 
-const isOnline = room_id => !!clients[room_id]
+const isSupportOnline = () => admins[data.supportUsername] && Object.values(admins[data.supportUsername]).length > 0
 
 const socketController = {
     startSocket,
     sendMessage,
     sendSeen,
-    isOnline,
+    isSupportOnline,
 }
 
 export default socketController

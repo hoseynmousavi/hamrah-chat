@@ -29,7 +29,7 @@ let remindTimer = setInterval(() => sendSmsToSupport(false), 1000 * 15 * 60)
 
 const sendSmsToSupport = resetTimer =>
 {
-    message.countDocuments({sender: "client", seen_by_admin: false, created_date: {$lte: new Date(new Date().getTime() - (1000 * 15 * 60))}}, (err, messages) =>
+    message.countDocuments({sender: "client", seen_by_admin: false, created_date: {$gte: new Date(new Date().getTime() - (1000 * 15 * 60))}}, (err, messages) =>
     {
         if (err) console.log(err)
         else

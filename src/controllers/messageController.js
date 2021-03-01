@@ -21,15 +21,20 @@ room.countDocuments(null, (err, countRooms) =>
 
 setInterval(() =>
 {
+    const hour = new Date().getHours()
+    if (hour === 9 || hour === 21) gRpcController.resetCacheNames()
+}, 3600000)
+
+setInterval(() =>
+{
     message.countDocuments({sender: "client", seen_by_admin: false, created_date: {$lte: new Date(new Date().getTime() - (1000 * 60 * 60))}}, (err, messages) =>
     {
         if (err) console.log(err)
         else
         {
-            const hour = new Date().getHours()
-
             if (messages > 0)
             {
+                const hour = new Date().getHours()
                 if (hour <= 22 && hour >= 8)
                 {
                     axios.get(`https://api.kavenegar.com/v1/${data.kavenegarKey}/verify/lookup.json?receptor=${data.supportNumber}&token=${messages}&template=${data.remindTemplate}`)
@@ -37,11 +42,9 @@ setInterval(() =>
                         .catch(() => console.log("error in sending sms"))
                 }
             }
-
-            if (hour === 9 || hour === 21) gRpcController.resetCacheNames()
         }
     })
-}, 3600000)
+}, 900000)
 
 const sendMessage = (req, res) =>
 {

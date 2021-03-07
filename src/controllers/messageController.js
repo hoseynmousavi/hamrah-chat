@@ -215,7 +215,7 @@ const getRooms = (req, res) =>
                             gRpcController.getFullName(item.username)
                                 .then(nickname =>
                                 {
-                                    item.nickname = nickname
+                                    item.nickname = nickname ? nickname : null
                                     if (Object.values(sendRooms).every(item => item.last_message && item.nickname !== undefined)) res.send({results: sendRooms, count: roomCount})
                                 })
                                 .catch(() => res.status(500).send({message: "error getting names"}))
